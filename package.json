@@ -1,0 +1,7 @@
+{
+  "name": "like-2-gig",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev"
+  }
+}
