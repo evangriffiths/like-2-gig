@@ -14,6 +14,9 @@ export async function fetchAllSavedTracks(
 
     if (res.status === 429) {
       const retryAfter = parseInt(res.headers.get("Retry-After") || "1", 10);
+      if (retryAfter > 60) {
+        throw new Error(`Spotify rate limited for ${retryAfter}s, too long to wait`);
+      }
       console.log(`Rate limited, retrying after ${retryAfter}s`);
       await new Promise((r) => setTimeout(r, retryAfter * 1000));
       continue;

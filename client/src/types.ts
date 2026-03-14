@@ -10,3 +10,18 @@ export interface LikedArtist {
   firstLikedAt: string;
   songs: LikedSong[];
 }
+
+export interface Gig {
+  venue: string;
+  location: string;
+  date: string;
+  songkickUrl: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface ArtistGigs {
+  artistId: string;
+  artistName: string;
+  gigs: Gig[];
+}

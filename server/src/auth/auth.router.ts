@@ -8,7 +8,9 @@ export const authRouter = Router();
 authRouter.get("/login", (req, res) => {
   const state = crypto.randomUUID();
   req.session.oauthState = state;
-  res.redirect(getAuthorizeUrl(state));
+  req.session.save(() => {
+    res.redirect(getAuthorizeUrl(state));
+  });
 });
 
 authRouter.get("/callback", async (req, res) => {

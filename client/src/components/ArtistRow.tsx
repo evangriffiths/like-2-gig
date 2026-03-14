@@ -8,27 +8,34 @@ interface ArtistRowProps {
 
 export function ArtistRow({ artist }: ArtistRowProps) {
   const [open, setOpen] = useState(false);
-  const likedDate = new Date(artist.firstLikedAt).toLocaleDateString();
+  const likedDate = artist.firstLikedAt
+    ? new Date(artist.firstLikedAt).toLocaleDateString()
+    : null;
+  const hasSongs = artist.songs.length > 0;
 
   return (
     <li>
       <div className="flex items-center gap-1">
         <button
-          onClick={() => setOpen(!open)}
+          onClick={() => hasSongs && setOpen(!open)}
           className="flex flex-1 items-center justify-between rounded-lg bg-gray-900 px-4 py-3 text-left transition hover:bg-gray-800"
         >
           <div className="flex items-center gap-2">
-            <span
-              className={`text-xs text-gray-500 transition-transform ${open ? "rotate-90" : ""}`}
-            >
-              &#9654;
-            </span>
+            {hasSongs && (
+              <span
+                className={`text-xs text-gray-500 transition-transform ${open ? "rotate-90" : ""}`}
+              >
+                &#9654;
+              </span>
+            )}
             <span className="font-medium text-white">{artist.name}</span>
-            <span className="text-xs text-gray-600">
-              {artist.songs.length}
-            </span>
+            {hasSongs && (
+              <span className="text-xs text-gray-600">
+                {artist.songs.length}
+              </span>
+            )}
           </div>
-          <span className="text-sm text-gray-500">{likedDate}</span>
+          {likedDate && <span className="text-sm text-gray-500">{likedDate}</span>}
         </button>
         <SpotifyLink type="artist" id={artist.id} />
       </div>

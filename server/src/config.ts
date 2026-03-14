@@ -14,7 +14,7 @@ function requireEnv(name: string): string {
 export const config = {
   clientId: requireEnv("CLIENT_ID"),
   clientSecret: requireEnv("CLIENT_SECRET"),
-  redirectUri: "http://127.0.0.1:3001/auth/callback",
+  redirectUri: "http://127.0.0.1:5173/auth/callback",
   sessionSecret: process.env.SESSION_SECRET || "like2gig-dev-secret",
   port: parseInt(process.env.PORT || "3001", 10),
   clientOrigin: "http://127.0.0.1:5173",

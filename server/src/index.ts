@@ -4,6 +4,7 @@ import session from "express-session";
 import { config } from "./config.js";
 import { authRouter } from "./auth/auth.router.js";
 import { artistsRouter } from "./api/artists.router.js";
+import { gigsRouter } from "./api/gigs.router.js";
 import { requireAuth } from "./middleware/require-auth.js";
 
 const app = express();
@@ -19,7 +20,7 @@ app.use(
 );
 
 app.use("/auth", authRouter);
-app.use("/api", requireAuth, artistsRouter);
+app.use("/api", requireAuth, artistsRouter, gigsRouter);
 
 app.listen(config.port, () => {
   console.log(`Server listening on http://127.0.0.1:${config.port}`);
