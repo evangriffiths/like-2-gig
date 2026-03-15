@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useGigs } from "../hooks/useGigs";
 import { Spinner } from "../components/Spinner";
 import type { ArtistGigs, Gig } from "../types";
@@ -196,14 +196,75 @@ function LocationSearch({
   );
 }
 
+function DateRangeFilter({
+  dateFrom,
+  dateTo,
+  onChange,
+}: {
+  dateFrom: string;
+  dateTo: string;
+  onChange: (from: string, to: string) => void;
+}) {
+  return (
+    <div className="mb-4 flex items-center gap-2">
+      <span className="text-xs text-gray-500">From</span>
+      <input
+        type="date"
+        value={dateFrom}
+        onChange={(e) => onChange(e.target.value, dateTo)}
+        className="rounded bg-gray-800 px-2 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-gray-600"
+      />
+      <span className="text-xs text-gray-500">To</span>
+      <input
+        type="date"
+        value={dateTo}
+        onChange={(e) => onChange(dateFrom, e.target.value)}
+        className="rounded bg-gray-800 px-2 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-gray-600"
+      />
+      {dateTo && (
+        <button
+          onClick={() => onChange(new Date().toISOString().split("T")[0], "")}
+          className="rounded bg-gray-700 px-2 py-1.5 text-xs text-gray-300 hover:bg-gray-600"
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+}
+
+function filterGigsByDate(gigs: Gig[], dateFrom: string, dateTo: string): Gig[] {
+  if (!dateFrom && !dateTo) return gigs;
+  return gigs.filter((gig) => {
+    const d = gig.date.split("T")[0];
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
+    return true;
+  });
+}
+
 export function GigsPage() {
   const { artistGigs, loading, error, searchByLocation, clearLocation, location } = useGigs();
+  const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dateTo, setDateTo] = useState("");
 
-  const isFiltered = location !== null;
+  const isLocationFiltered = location !== null;
+  const hasDateFilter = dateFrom !== "" || dateTo !== "";
+
+  // Apply date filter to artist gigs
+  const filteredArtistGigs = useMemo(() => {
+    if (!hasDateFilter) return artistGigs;
+    return artistGigs
+      .map((ag) => ({
+        ...ag,
+        gigs: filterGigsByDate(ag.gigs, dateFrom, dateTo),
+      }))
+      .filter((ag) => ag.gigs.length > 0);
+  }, [artistGigs, dateFrom, dateTo, hasDateFilter]);
 
   // For location search, flatten gigs across artists and sort by date
-  const flatGigs = isFiltered
-    ? artistGigs
+  const flatGigs = isLocationFiltered
+    ? filteredArtistGigs
         .flatMap((ag) =>
           ag.gigs.map((gig) => ({ ...gig, artistName: ag.artistName }))
         )
@@ -218,14 +279,22 @@ export function GigsPage() {
         <LocationSearch
           onSearch={(lat, lng, radius) => searchByLocation({ lat, lng, radius })}
           onClear={clearLocation}
-          isFiltered={isFiltered}
+          isFiltered={isLocationFiltered}
+        />
+
+        <DateRangeFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
         />
 
         {loading && <Spinner />}
         {error && <p className="text-red-400">Error: {error}</p>}
-        {!loading && !error && artistGigs.length === 0 && (
+        {!loading && !error && filteredArtistGigs.length === 0 && (
           <p className="text-gray-400">
-            {isFiltered ? "No gigs found in this area." : "No upcoming gigs found."}
+            {isLocationFiltered || hasDateFilter
+              ? "No gigs found matching your filters."
+              : "No upcoming gigs found."}
           </p>
         )}
 
@@ -238,7 +307,7 @@ export function GigsPage() {
         )}
 
         {!loading && !error && !flatGigs &&
-          artistGigs.map((ag) => (
+          filteredArtistGigs.map((ag) => (
             <ArtistGigSection key={ag.artistId} artist={ag} />
           ))}
       </div>
