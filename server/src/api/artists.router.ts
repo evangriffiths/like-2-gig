@@ -1,31 +1,32 @@
 import { Router } from "express";
 import { fetchAllSavedTracks } from "./spotify-client.js";
 import { extractArtists } from "./transform.js";
-import { upsertLikedArtists, getCachedLikedArtists } from "../db.js";
+import { upsertLikedArtists, getCachedLikedArtists, getSyncStatus, setSyncStatus } from "../db.js";
 
 export const artistsRouter = Router();
 
-artistsRouter.get("/liked-artists", async (req, res) => {
+artistsRouter.get("/liked-artists", async (_req, res) => {
+  const artists = getCachedLikedArtists();
+  res.json({ artists });
+});
+
+artistsRouter.get("/sync-status", async (_req, res) => {
+  const status = getSyncStatus();
+  res.json({ syncStatus: status });
+});
+
+artistsRouter.post("/sync", async (req, res) => {
   try {
     const { accessToken } = req.session.tokens!;
     const savedTracks = await fetchAllSavedTracks(accessToken);
     const artists = extractArtists(savedTracks);
-
-    // Cache for offline use
     upsertLikedArtists(artists);
-
-    res.json({ artists });
+    setSyncStatus("ok");
+    res.json({ artists, syncStatus: getSyncStatus() });
   } catch (err) {
-    console.error("Error fetching liked artists:", err);
-
-    // Fall back to cached artists
-    const cached = getCachedLikedArtists();
-    if (cached.length > 0) {
-      console.log(`[artists] Serving ${cached.length} cached artists`);
-      res.json({ artists: cached });
-      return;
-    }
-
-    res.status(500).json({ error: "Failed to fetch liked artists" });
+    const msg = (err as Error).message;
+    console.error("Sync error:", msg);
+    setSyncStatus("error", msg);
+    res.status(500).json({ error: msg, syncStatus: getSyncStatus() });
   }
 });

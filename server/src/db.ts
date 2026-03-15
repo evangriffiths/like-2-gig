@@ -45,6 +45,13 @@ db.exec(`
     added_at TEXT NOT NULL,
     UNIQUE(spotify_artist_id, spotify_track_id)
   );
+
+  CREATE TABLE IF NOT EXISTS sync_status (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    synced_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    error_message TEXT
+  );
 `);
 
 // Migration: seed liked_artists from artist_gigs if empty
@@ -295,4 +302,31 @@ export function getCachedGigs(artistIds: string[], locationFilter?: LocationFilt
   }
 
   return Array.from(map.values());
+}
+
+// --- Sync status ---
+
+export interface SyncStatus {
+  syncedAt: string;
+  status: "ok" | "error";
+  errorMessage: string | null;
+}
+
+export function setSyncStatus(status: "ok" | "error", errorMessage?: string): void {
+  db.prepare(
+    `INSERT INTO sync_status (id, synced_at, status, error_message)
+     VALUES (1, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       synced_at = excluded.synced_at,
+       status = excluded.status,
+       error_message = excluded.error_message`
+  ).run(new Date().toISOString(), status, errorMessage || null);
+}
+
+export function getSyncStatus(): SyncStatus | null {
+  const row = db
+    .prepare(`SELECT synced_at, status, error_message FROM sync_status WHERE id = 1`)
+    .get() as { synced_at: string; status: "ok" | "error"; error_message: string | null } | undefined;
+  if (!row) return null;
+  return { syncedAt: row.synced_at, status: row.status, errorMessage: row.error_message };
 }

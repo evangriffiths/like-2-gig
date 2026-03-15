@@ -25,3 +25,9 @@ export interface ArtistGigs {
   artistName: string;
   gigs: Gig[];
 }
+
+export interface SyncStatus {
+  syncedAt: string;
+  status: "ok" | "error";
+  errorMessage: string | null;
+}
