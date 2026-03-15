@@ -5,21 +5,24 @@ Find upcoming gigs near you for artists in your Spotify 'Liked Songs' playlist.
 ## Local Development
 
 ### Prerequisites
+
 - Node.js 22+
 - pnpm
 
 ### Setup
 
-1. Create a Spotify app at https://developer.spotify.com/dashboard
+1. Create a Spotify app at <https://developer.spotify.com/dashboard>
    - Add `http://127.0.0.1:5173/auth/callback` as a redirect URI
 
 2. Create a `.env` file in the project root:
-   ```
+
+   ```bash
    CLIENT_ID=your_spotify_client_id
    CLIENT_SECRET=your_spotify_client_secret
    ```
 
 3. Install dependencies and start:
+
    ```bash
    pnpm install
    pnpm dev
@@ -29,13 +32,14 @@ The client runs at `http://127.0.0.1:5173` and the server at `http://127.0.0.1:3
 
 ## Deployment
 
-Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
+Deployed on a Hetzner VPS (CX22, Ubuntu) at <https://like2gig.evangriffiths.org>.
 
 ### Server setup
 
 1. **Provision a VPS** on Hetzner with primary IPv4, add your SSH key during creation.
 
 2. **SSH in and install dependencies:**
+
    ```bash
    ssh root@<your-ip>
 
@@ -51,6 +55,7 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
    ```
 
 3. **Set up the app directory and bare git repo (for push-to-deploy):**
+
    ```bash
    mkdir -p /opt/like2gig
    cd /opt/like2gig.git && git init --bare
@@ -58,6 +63,7 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
    ```
 
 4. **Create the deploy hook** at `/opt/like2gig.git/hooks/post-receive`:
+
    ```bash
    #!/bin/bash
    set -e
@@ -77,9 +83,11 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
    systemctl restart like2gig
    echo "==> Deploy complete!"
    ```
+
    Then `chmod +x /opt/like2gig.git/hooks/post-receive`.
 
 5. **Allow native build scripts** (needed for `better-sqlite3`):
+
    ```bash
    # In /opt/like2gig/package.json, add:
    # "pnpm": { "onlyBuiltDependencies": ["better-sqlite3", "esbuild"] }
@@ -88,6 +96,7 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
    ```
 
 6. **Create the systemd service** at `/etc/systemd/system/like2gig.service`:
+
    ```ini
    [Unit]
    Description=Like2Gig
@@ -105,7 +114,9 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
    [Install]
    WantedBy=multi-user.target
    ```
+
    Then:
+
    ```bash
    systemctl daemon-reload
    systemctl enable like2gig
@@ -116,6 +127,7 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
 1. **Add a DNS A record** pointing your subdomain to the server IP (e.g. `like2gig` -> `204.168.132.106`).
 
 2. **Configure Caddy** at `/etc/caddy/Caddyfile`:
+
    ```
    like2gig.evangriffiths.org {
        root * /opt/like2gig/client/dist
@@ -134,6 +146,7 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
        }
    }
    ```
+
    Then `systemctl restart caddy`. Caddy auto-provisions the SSL certificate.
 
 3. **Add the production redirect URI** in the Spotify Developer Dashboard:
@@ -142,7 +155,8 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at https://like2gig.evangriffiths.org.
 ### Environment variables
 
 Create `/opt/like2gig/.env` on the server:
-```
+
+```bash
 CLIENT_ID=your_spotify_client_id
 CLIENT_SECRET=your_spotify_client_secret
 SESSION_SECRET=<generate with: openssl rand -hex 32>
@@ -179,6 +193,7 @@ git push deploy main
 ### Copying the local database to the server
 
 To avoid re-syncing from scratch:
+
 ```bash
 # Checkpoint WAL so all data is in the main .db file
 sqlite3 server/data/like2gig.db "PRAGMA wal_checkpoint(TRUNCATE);"
