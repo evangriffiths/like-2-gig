@@ -3,4 +3,4 @@ dist
 .env
 *.tsbuildinfo
 .DS_Store
-server/data/*.db
+server/data/
