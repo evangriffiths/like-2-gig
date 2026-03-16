@@ -124,7 +124,7 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at <https://like2gig.evangriffiths.org>
 
 ### Domain and HTTPS
 
-1. **Add a DNS A record** pointing your subdomain to the server IP (e.g. `like2gig` -> `204.168.132.106`).
+1. **Add a DNS A record** pointing your subdomain to the server IP (e.g. `like2gig` -> `<your-ip>`).
 
 2. **Configure Caddy** at `/etc/caddy/Caddyfile`:
 
@@ -184,7 +184,7 @@ git push origin main
 
 ```bash
 # One-time: add the deploy remote
-git remote add deploy root@204.168.132.106:/opt/like2gig.git
+git remote add deploy root@<your-ip>:/opt/like2gig.git
 
 # Deploy directly
 git push deploy main
@@ -199,11 +199,15 @@ To avoid re-syncing from scratch:
 sqlite3 server/data/like2gig.db "PRAGMA wal_checkpoint(TRUNCATE);"
 
 # Stop app, copy, clean WAL files, restart
-ssh root@204.168.132.106 'systemctl stop like2gig'
-scp server/data/like2gig.db root@204.168.132.106:/opt/like2gig/server/data/like2gig.db
-ssh root@204.168.132.106 'rm -f /opt/like2gig/server/data/like2gig.db-wal /opt/like2gig/server/data/like2gig.db-shm && systemctl start like2gig'
+ssh root@<your-ip> 'systemctl stop like2gig'
+scp server/data/like2gig.db root@<your-ip>:/opt/like2gig/server/data/like2gig.db
+ssh root@<your-ip> 'rm -f /opt/like2gig/server/data/like2gig.db-wal /opt/like2gig/server/data/like2gig.db-shm && systemctl start like2gig'
 ```
 
 ## TODO
 
-- Add a sync button/icon on the gigs page for syncing with the Songkick backend
+- Add login
+- Add some way to see how stale gigs data is (globally? for each artist?)
+- Move sync button to header, make it reflective of artist+gig data syncing. Syncing gigs takes ages - what happens if e.g. hit refresh while syncing in progress?
+- Add automation that syncs e.g. daily
+- Add notifications tab? Add location, send whatsapp / email notification when new gigs appear

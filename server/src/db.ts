@@ -158,6 +158,22 @@ export function upsertArtistGigs(
 }
 
 /**
+ * Get artist names that were not found on Songkick.
+ */
+export function getNotFoundArtists(artistIds: string[]): string[] {
+  if (artistIds.length === 0) return [];
+  const placeholders = artistIds.map(() => "?").join(",");
+  const rows = db
+    .prepare(
+      `SELECT artist_name FROM artist_gigs
+       WHERE spotify_artist_id IN (${placeholders}) AND status = 'not_found'
+       ORDER BY artist_name`
+    )
+    .all(...artistIds) as Array<{ artist_name: string }>;
+  return rows.map((r) => r.artist_name);
+}
+
+/**
  * Haversine distance in km between two lat/lng points.
  */
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {

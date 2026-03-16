@@ -244,7 +244,7 @@ function filterGigsByDate(gigs: Gig[], dateFrom: string, dateTo: string): Gig[] 
 }
 
 export function GigsPage() {
-  const { artistGigs, loading, error, searchByLocation, clearLocation, location } = useGigs();
+  const { artistGigs, notFoundArtists, loading, error, searchByLocation, clearLocation, location } = useGigs();
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().split("T")[0]);
   const [dateTo, setDateTo] = useState("");
 
@@ -310,6 +310,15 @@ export function GigsPage() {
           filteredArtistGigs.map((ag) => (
             <ArtistGigSection key={ag.artistId} artist={ag} />
           ))}
+
+        {!loading && notFoundArtists.length > 0 && (
+          <p className="mt-8 text-sm text-amber-500/70 group relative cursor-default">
+            Gig details for {notFoundArtists.length} artist{notFoundArtists.length !== 1 && "s"} not found on Songkick
+            <span className="invisible group-hover:visible absolute left-0 bottom-full z-10 mb-1 w-max max-w-sm rounded bg-gray-800 px-3 py-2 text-xs text-gray-300 shadow-lg">
+              {notFoundArtists.join(", ")}
+            </span>
+          </p>
+        )}
       </div>
     </div>
   );

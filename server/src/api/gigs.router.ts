@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { searchArtist, fetchArtistGigs } from "./songkick.js";
-import { getStaleArtistIds, upsertArtistGigs, getCachedGigs, getCachedLikedArtists, type LocationFilter } from "../db.js";
+import { getStaleArtistIds, upsertArtistGigs, getCachedGigs, getCachedLikedArtists, getNotFoundArtists, type LocationFilter } from "../db.js";
 import type { LikedArtist } from "../types.js";
 
 const NOMINATIM_UA = "like2gig/1.0";
@@ -84,7 +84,8 @@ gigsRouter.get("/gigs", async (req, res) => {
 
     const artistIds = artists.map((a) => a.id);
     const artistGigs = getCachedGigs(artistIds, locationFilter);
-    res.json({ artistGigs });
+    const notFoundArtists = getNotFoundArtists(artistIds);
+    res.json({ artistGigs, notFoundArtists });
   } catch (err) {
     console.error("Error fetching gigs:", err);
     res.status(500).json({ error: "Failed to fetch gigs" });

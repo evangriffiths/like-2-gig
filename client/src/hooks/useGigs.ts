@@ -11,6 +11,7 @@ export interface LocationSearch {
 export function useGigs() {
   const navigate = useNavigate();
   const [artistGigs, setArtistGigs] = useState<ArtistGigs[]>([]);
+  const [notFoundArtists, setNotFoundArtists] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationSearch | null>(null);
@@ -37,6 +38,7 @@ export function useGigs() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setArtistGigs(data.artistGigs);
+        setNotFoundArtists(data.notFoundArtists || []);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -57,5 +59,5 @@ export function useGigs() {
 
   const clearLocation = useCallback(() => setLocation(null), []);
 
-  return { artistGigs, loading, error, searchByLocation, clearLocation, location };
+  return { artistGigs, notFoundArtists, loading, error, searchByLocation, clearLocation, location };
 }
