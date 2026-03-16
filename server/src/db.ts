@@ -32,35 +32,84 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS liked_artists (
-    spotify_artist_id TEXT NOT NULL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    spotify_artist_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    first_liked_at TEXT NOT NULL
+    first_liked_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, spotify_artist_id)
   );
 
   CREATE TABLE IF NOT EXISTS liked_songs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    spotify_artist_id TEXT NOT NULL REFERENCES liked_artists(spotify_artist_id),
+    user_id TEXT NOT NULL,
+    spotify_artist_id TEXT NOT NULL,
     spotify_track_id TEXT NOT NULL,
     name TEXT NOT NULL,
     added_at TEXT NOT NULL,
-    UNIQUE(spotify_artist_id, spotify_track_id)
+    UNIQUE(user_id, spotify_artist_id, spotify_track_id)
   );
 
   CREATE TABLE IF NOT EXISTS sync_status (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
+    user_id TEXT NOT NULL PRIMARY KEY,
     synced_at TEXT NOT NULL,
     status TEXT NOT NULL,
     error_message TEXT
   );
 `);
 
-// Migration: seed liked_artists from artist_gigs if empty
+// Migration: add user_id column to liked_artists if missing
 {
-  const count = (db.prepare("SELECT COUNT(*) as c FROM liked_artists").get() as { c: number }).c;
-  if (count === 0) {
+  const cols = db.prepare("PRAGMA table_info(liked_artists)").all() as Array<{ name: string }>;
+  const hasUserId = cols.some((c) => c.name === "user_id");
+  if (!hasUserId) {
+    // Recreate tables with user_id — move old data under a default user
     db.exec(`
-      INSERT OR IGNORE INTO liked_artists (spotify_artist_id, name, first_liked_at)
-      SELECT spotify_artist_id, artist_name, fetched_at FROM artist_gigs
+      ALTER TABLE liked_artists RENAME TO liked_artists_old;
+      ALTER TABLE liked_songs RENAME TO liked_songs_old;
+
+      CREATE TABLE liked_artists (
+        user_id TEXT NOT NULL,
+        spotify_artist_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        first_liked_at TEXT NOT NULL,
+        PRIMARY KEY (user_id, spotify_artist_id)
+      );
+
+      CREATE TABLE liked_songs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        spotify_artist_id TEXT NOT NULL,
+        spotify_track_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        added_at TEXT NOT NULL,
+        UNIQUE(user_id, spotify_artist_id, spotify_track_id)
+      );
+
+      INSERT INTO liked_artists (user_id, spotify_artist_id, name, first_liked_at)
+      SELECT '__default__', spotify_artist_id, name, first_liked_at FROM liked_artists_old;
+
+      INSERT INTO liked_songs (user_id, spotify_artist_id, spotify_track_id, name, added_at)
+      SELECT '__default__', spotify_artist_id, spotify_track_id, name, added_at FROM liked_songs_old;
+
+      DROP TABLE liked_songs_old;
+      DROP TABLE liked_artists_old;
+    `);
+  }
+}
+
+// Migration: add user_id to sync_status if missing
+{
+  const cols = db.prepare("PRAGMA table_info(sync_status)").all() as Array<{ name: string }>;
+  const hasUserId = cols.some((c) => c.name === "user_id");
+  if (!hasUserId) {
+    db.exec(`
+      DROP TABLE sync_status;
+      CREATE TABLE sync_status (
+        user_id TEXT NOT NULL PRIMARY KEY,
+        synced_at TEXT NOT NULL,
+        status TEXT NOT NULL,
+        error_message TEXT
+      );
     `);
   }
 }
@@ -205,27 +254,26 @@ export interface LocationFilter {
 }
 
 /**
- * Cache liked artists and their songs from Spotify.
- * Replaces all existing data (full refresh).
+ * Cache liked artists and their songs from Spotify for a specific user.
  */
-export function upsertLikedArtists(artists: LikedArtist[]): void {
+export function upsertLikedArtists(userId: string, artists: LikedArtist[]): void {
   const txn = db.transaction(() => {
-    db.exec("DELETE FROM liked_songs");
-    db.exec("DELETE FROM liked_artists");
+    db.prepare("DELETE FROM liked_songs WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM liked_artists WHERE user_id = ?").run(userId);
 
     const insertArtist = db.prepare(
-      `INSERT INTO liked_artists (spotify_artist_id, name, first_liked_at)
-       VALUES (?, ?, ?)`
+      `INSERT INTO liked_artists (user_id, spotify_artist_id, name, first_liked_at)
+       VALUES (?, ?, ?, ?)`
     );
     const insertSong = db.prepare(
-      `INSERT INTO liked_songs (spotify_artist_id, spotify_track_id, name, added_at)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO liked_songs (user_id, spotify_artist_id, spotify_track_id, name, added_at)
+       VALUES (?, ?, ?, ?, ?)`
     );
 
     for (const artist of artists) {
-      insertArtist.run(artist.id, artist.name, artist.firstLikedAt);
+      insertArtist.run(userId, artist.id, artist.name, artist.firstLikedAt);
       for (const song of artist.songs) {
-        insertSong.run(artist.id, song.id, song.name, song.addedAt);
+        insertSong.run(userId, artist.id, song.id, song.name, song.addedAt);
       }
     }
   });
@@ -233,18 +281,28 @@ export function upsertLikedArtists(artists: LikedArtist[]): void {
 }
 
 /**
- * Get all cached liked artists with their songs.
+ * Get all cached liked artists with their songs for a specific user.
  */
-export function getCachedLikedArtists(): LikedArtist[] {
+export function getCachedLikedArtists(userId: string): LikedArtist[] {
   const artistRows = db
-    .prepare(`SELECT spotify_artist_id, name, first_liked_at FROM liked_artists ORDER BY name`)
-    .all() as Array<{ spotify_artist_id: string; name: string; first_liked_at: string }>;
+    .prepare(`SELECT spotify_artist_id, name, first_liked_at FROM liked_artists WHERE user_id = ? ORDER BY name`)
+    .all(userId) as Array<{ spotify_artist_id: string; name: string; first_liked_at: string }>;
 
   if (artistRows.length === 0) return [];
 
+  const placeholders = artistRows.map(() => "?").join(",");
   const songRows = db
-    .prepare(`SELECT spotify_artist_id, spotify_track_id, name, added_at FROM liked_songs ORDER BY added_at DESC`)
-    .all() as Array<{ spotify_artist_id: string; spotify_track_id: string; name: string; added_at: string }>;
+    .prepare(
+      `SELECT spotify_artist_id, spotify_track_id, name, added_at FROM liked_songs
+       WHERE user_id = ? AND spotify_artist_id IN (${placeholders})
+       ORDER BY added_at DESC`
+    )
+    .all(userId, ...artistRows.map((a) => a.spotify_artist_id)) as Array<{
+    spotify_artist_id: string;
+    spotify_track_id: string;
+    name: string;
+    added_at: string;
+  }>;
 
   const songsByArtist = new Map<string, LikedSong[]>();
   for (const s of songRows) {
@@ -259,16 +317,6 @@ export function getCachedLikedArtists(): LikedArtist[] {
     firstLikedAt: a.first_liked_at,
     songs: songsByArtist.get(a.spotify_artist_id) || [],
   }));
-}
-
-/**
- * Get all cached liked artist IDs.
- */
-export function getCachedLikedArtistIds(): string[] {
-  const rows = db
-    .prepare(`SELECT spotify_artist_id FROM liked_artists`)
-    .all() as Array<{ spotify_artist_id: string }>;
-  return rows.map((r) => r.spotify_artist_id);
 }
 
 /**
@@ -328,21 +376,21 @@ export interface SyncStatus {
   errorMessage: string | null;
 }
 
-export function setSyncStatus(status: "ok" | "error", errorMessage?: string): void {
+export function setSyncStatus(userId: string, status: "ok" | "error", errorMessage?: string): void {
   db.prepare(
-    `INSERT INTO sync_status (id, synced_at, status, error_message)
-     VALUES (1, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET
+    `INSERT INTO sync_status (user_id, synced_at, status, error_message)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET
        synced_at = excluded.synced_at,
        status = excluded.status,
        error_message = excluded.error_message`
-  ).run(new Date().toISOString(), status, errorMessage || null);
+  ).run(userId, new Date().toISOString(), status, errorMessage || null);
 }
 
-export function getSyncStatus(): SyncStatus | null {
+export function getSyncStatus(userId: string): SyncStatus | null {
   const row = db
-    .prepare(`SELECT synced_at, status, error_message FROM sync_status WHERE id = 1`)
-    .get() as { synced_at: string; status: "ok" | "error"; error_message: string | null } | undefined;
+    .prepare(`SELECT synced_at, status, error_message FROM sync_status WHERE user_id = ?`)
+    .get(userId) as { synced_at: string; status: "ok" | "error"; error_message: string | null } | undefined;
   if (!row) return null;
   return { syncedAt: row.synced_at, status: row.status, errorMessage: row.error_message };
 }

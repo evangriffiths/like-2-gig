@@ -60,5 +60,7 @@ declare module "express-session" {
   interface SessionData {
     tokens?: TokenSet;
     oauthState?: string;
+    userId?: string;
+    displayName?: string;
   }
 }

@@ -27,7 +27,17 @@ authRouter.get("/callback", async (req, res) => {
 
   try {
     const tokens = await exchangeCodeForTokens(code as string);
+
+    // Fetch Spotify user profile
+    const profileRes = await fetch("https://api.spotify.com/v1/me", {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    });
+    if (!profileRes.ok) throw new Error("Failed to fetch Spotify profile");
+    const profile = await profileRes.json();
+
     req.session.tokens = tokens;
+    req.session.userId = profile.id;
+    req.session.displayName = profile.display_name || profile.id;
     delete req.session.oauthState;
     res.redirect(`${config.clientOrigin}/artists`);
   } catch (err) {
@@ -37,8 +47,12 @@ authRouter.get("/callback", async (req, res) => {
 });
 
 authRouter.get("/me", (req, res) => {
-  const authenticated = !!req.session.tokens;
-  res.json({ authenticated });
+  const authenticated = !!(req.session.tokens && req.session.userId);
+  res.json({
+    authenticated,
+    userId: req.session.userId || null,
+    displayName: req.session.displayName || null,
+  });
 });
 
 authRouter.post("/logout", (req, res) => {

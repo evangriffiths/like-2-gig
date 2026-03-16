@@ -8,7 +8,7 @@ export async function requireAuth(
 ) {
   const tokens = req.session.tokens;
 
-  if (!tokens) {
+  if (!tokens || !req.session.userId) {
     return res.status(401).json({ error: "Not authenticated" });
   }
 

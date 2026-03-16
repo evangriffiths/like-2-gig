@@ -67,10 +67,11 @@ gigsRouter.get("/gigs", async (req, res) => {
       };
     }
 
-    // Use cached liked artists — no Spotify call needed
-    const artists = getCachedLikedArtists();
+    // Use current user's cached liked artists
+    const userId = req.session.userId!;
+    const artists = getCachedLikedArtists(userId);
     if (artists.length === 0) {
-      res.json({ artistGigs: [] });
+      res.json({ artistGigs: [], notFoundArtists: [] });
       return;
     }
 

@@ -130,6 +130,10 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at <https://like2gig.evangriffiths.org>
 
    ```
    like2gig.evangriffiths.org {
+       basicauth {
+           admin <bcrypt hash of password>
+       }
+
        root * /opt/like2gig/client/dist
        file_server
 
@@ -148,6 +152,7 @@ Deployed on a Hetzner VPS (CX22, Ubuntu) at <https://like2gig.evangriffiths.org>
    ```
 
    Then `systemctl restart caddy`. Caddy auto-provisions the SSL certificate.
+   We also set a password via `caddy hash-password --plaintext <password>`.
 
 3. **Add the production redirect URI** in the Spotify Developer Dashboard:
    `https://like2gig.evangriffiths.org/auth/callback`
@@ -206,7 +211,7 @@ ssh root@<your-ip> 'rm -f /opt/like2gig/server/data/like2gig.db-wal /opt/like2gi
 
 ## TODO
 
-- Add login
+- What happens if I connect to someone else's spotify?
 - Add some way to see how stale gigs data is (globally? for each artist?)
 - Move sync button to header, make it reflective of artist+gig data syncing. Syncing gigs takes ages - what happens if e.g. hit refresh while syncing in progress?
 - Add automation that syncs e.g. daily

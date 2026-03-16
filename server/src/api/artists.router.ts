@@ -5,28 +5,31 @@ import { upsertLikedArtists, getCachedLikedArtists, getSyncStatus, setSyncStatus
 
 export const artistsRouter = Router();
 
-artistsRouter.get("/liked-artists", async (_req, res) => {
-  const artists = getCachedLikedArtists();
+artistsRouter.get("/liked-artists", async (req, res) => {
+  const userId = req.session.userId!;
+  const artists = getCachedLikedArtists(userId);
   res.json({ artists });
 });
 
-artistsRouter.get("/sync-status", async (_req, res) => {
-  const status = getSyncStatus();
+artistsRouter.get("/sync-status", async (req, res) => {
+  const userId = req.session.userId!;
+  const status = getSyncStatus(userId);
   res.json({ syncStatus: status });
 });
 
 artistsRouter.post("/sync", async (req, res) => {
+  const userId = req.session.userId!;
   try {
     const { accessToken } = req.session.tokens!;
     const savedTracks = await fetchAllSavedTracks(accessToken);
     const artists = extractArtists(savedTracks);
-    upsertLikedArtists(artists);
-    setSyncStatus("ok");
-    res.json({ artists, syncStatus: getSyncStatus() });
+    upsertLikedArtists(userId, artists);
+    setSyncStatus(userId, "ok");
+    res.json({ artists, syncStatus: getSyncStatus(userId) });
   } catch (err) {
     const msg = (err as Error).message;
     console.error("Sync error:", msg);
-    setSyncStatus("error", msg);
-    res.status(500).json({ error: msg, syncStatus: getSyncStatus() });
+    setSyncStatus(userId, "error", msg);
+    res.status(500).json({ error: msg, syncStatus: getSyncStatus(userId) });
   }
 });
