@@ -10,6 +10,7 @@ import { config } from "./config.js";
 import { authRouter } from "./auth/auth.router.js";
 import { artistsRouter } from "./api/artists.router.js";
 import { gigsRouter } from "./api/gigs.router.js";
+import { cronRouter } from "./api/cron.router.js";
 import { requireAuth } from "./middleware/require-auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +39,7 @@ app.use(
 );
 
 app.use("/auth", authRouter);
+app.use("/api", cronRouter); // cron has its own auth
 app.use("/api", requireAuth, artistsRouter, gigsRouter);
 
 app.listen(config.port, () => {

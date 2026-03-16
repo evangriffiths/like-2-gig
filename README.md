@@ -211,7 +211,6 @@ ssh root@<your-ip> 'rm -f /opt/like2gig/server/data/like2gig.db-wal /opt/like2gi
 
 ## TODO
 
-- What happens if I connect to someone else's spotify?
 - Add some way to see how stale gigs data is (globally? for each artist?)
 - Move sync button to header, make it reflective of artist+gig data syncing. Syncing gigs takes ages - what happens if e.g. hit refresh while syncing in progress?
 - Add automation that syncs e.g. daily

@@ -26,8 +26,13 @@ export interface ArtistGigs {
   gigs: Gig[];
 }
 
-export interface SyncStatus {
-  syncedAt: string;
-  status: "ok" | "error";
+export interface SyncJob {
+  status: "idle" | "syncing_artists" | "syncing_gigs" | "completed" | "failed";
+  startedAt: string | null;
+  completedAt: string | null;
+  artistsTotal: number;
+  artistsSynced: number;
+  gigsTotal: number;
+  gigsSynced: number;
   errorMessage: string | null;
 }

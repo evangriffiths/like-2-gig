@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ArtistGigs } from "../types";
+import { useSyncContext } from "../contexts/SyncContext";
 
 export interface LocationSearch {
   lat: number;
@@ -15,6 +16,7 @@ export function useGigs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationSearch | null>(null);
+  const { syncJob } = useSyncContext();
 
   const fetchGigs = useCallback(
     async (loc: LocationSearch | null) => {
@@ -31,10 +33,7 @@ export function useGigs() {
           url += `?${params}`;
         }
         const res = await fetch(url);
-        if (res.status === 401) {
-          navigate("/", { replace: true });
-          return;
-        }
+        if (res.status === 401) { navigate("/", { replace: true }); return; }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setArtistGigs(data.artistGigs);
@@ -48,15 +47,18 @@ export function useGigs() {
     [navigate]
   );
 
+  useEffect(() => { fetchGigs(location); }, [fetchGigs, location]);
+
+  // Re-fetch when sync completes
   useEffect(() => {
-    fetchGigs(location);
-  }, [fetchGigs, location]);
+    if (syncJob?.status === "completed") {
+      fetchGigs(location);
+    }
+  }, [syncJob?.completedAt, fetchGigs, location]);
 
   const searchByLocation = useCallback(
-    (loc: LocationSearch) => setLocation(loc),
-    []
+    (loc: LocationSearch) => setLocation(loc), []
   );
-
   const clearLocation = useCallback(() => setLocation(null), []);
 
   return { artistGigs, notFoundArtists, loading, error, searchByLocation, clearLocation, location };

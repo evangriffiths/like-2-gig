@@ -3,13 +3,14 @@ import { LoginPage } from "./pages/LoginPage";
 import { ArtistsPage } from "./pages/ArtistsPage";
 import { GigsPage } from "./pages/GigsPage";
 import { Header } from "./components/Header";
+import { SyncProvider } from "./contexts/SyncContext";
 
 function AuthedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <SyncProvider>
       <Header />
       {children}
-    </>
+    </SyncProvider>
   );
 }
 

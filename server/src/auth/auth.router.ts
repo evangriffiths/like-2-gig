@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { config } from "../config.js";
 import { getAuthorizeUrl, exchangeCodeForTokens } from "./spotify-auth.js";
+import { upsertUser } from "../db.js";
 
 export const authRouter = Router();
 
@@ -39,6 +40,9 @@ authRouter.get("/callback", async (req, res) => {
     req.session.userId = profile.id;
     req.session.displayName = profile.display_name || profile.id;
     delete req.session.oauthState;
+
+    upsertUser(profile.id, profile.display_name || profile.id, tokens.refreshToken);
+
     res.redirect(`${config.clientOrigin}/artists`);
   } catch (err) {
     console.error("Token exchange error:", err);

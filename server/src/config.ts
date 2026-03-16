@@ -14,6 +14,7 @@ function requireEnv(name: string): string {
 const baseUrl = process.env.BASE_URL || "http://127.0.0.1:5173";
 
 export const config = {
+  cronSecret: process.env.CRON_SECRET || "",
   clientId: requireEnv("CLIENT_ID"),
   clientSecret: requireEnv("CLIENT_SECRET"),
   redirectUri: `${baseUrl}/auth/callback`,
