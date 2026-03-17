@@ -26,6 +26,20 @@ export interface ArtistGigs {
   gigs: Gig[];
 }
 
+export interface NotificationRule {
+  id: number;
+  label: string;
+  latitude: number;
+  longitude: number;
+  locationName: string;
+  radiusKm: number;
+  dateFrom: string | null;
+  dateTo: string | null;
+  createdAt: string;
+  lastSentAt: string | null;
+  lastGigCount: number | null;
+}
+
 export interface SyncJob {
   status: "idle" | "syncing_artists" | "syncing_gigs" | "completed" | "failed";
   startedAt: string | null;

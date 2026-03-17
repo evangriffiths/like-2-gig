@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { ArtistsPage } from "./pages/ArtistsPage";
 import { GigsPage } from "./pages/GigsPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { Header } from "./components/Header";
 import { SyncProvider } from "./contexts/SyncContext";
 
@@ -20,6 +21,7 @@ export function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/artists" element={<AuthedLayout><ArtistsPage /></AuthedLayout>} />
       <Route path="/gigs" element={<AuthedLayout><GigsPage /></AuthedLayout>} />
+      <Route path="/notifications" element={<AuthedLayout><NotificationsPage /></AuthedLayout>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -6,7 +6,7 @@ export function getAuthorizeUrl(state: string): string {
     response_type: "code",
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
-    scope: "user-library-read",
+    scope: "user-library-read user-read-email",
     state,
   });
   return `https://accounts.spotify.com/authorize?${params}`;

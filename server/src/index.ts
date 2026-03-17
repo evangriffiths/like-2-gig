@@ -11,6 +11,7 @@ import { authRouter } from "./auth/auth.router.js";
 import { artistsRouter } from "./api/artists.router.js";
 import { gigsRouter } from "./api/gigs.router.js";
 import { cronRouter } from "./api/cron.router.js";
+import { notificationsRouter } from "./api/notifications.router.js";
 import { requireAuth } from "./middleware/require-auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,7 +41,8 @@ app.use(
 
 app.use("/auth", authRouter);
 app.use("/api", cronRouter); // cron has its own auth
-app.use("/api", requireAuth, artistsRouter, gigsRouter);
+app.use(express.json());
+app.use("/api", requireAuth, artistsRouter, gigsRouter, notificationsRouter);
 
 app.listen(config.port, () => {
   console.log(`Server listening on http://127.0.0.1:${config.port}`);

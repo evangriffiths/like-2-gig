@@ -14,6 +14,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     user_id TEXT NOT NULL PRIMARY KEY,
     display_name TEXT,
+    email TEXT,
     refresh_token TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
@@ -67,7 +68,36 @@ db.exec(`
     gigs_synced INTEGER DEFAULT 0,
     error_message TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS notification_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    location_name TEXT NOT NULL,
+    radius_km INTEGER NOT NULL DEFAULT 50,
+    date_from TEXT,
+    date_to TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS notification_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_id INTEGER NOT NULL REFERENCES notification_rules(id) ON DELETE CASCADE,
+    sent_at TEXT NOT NULL,
+    gig_count INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'sent'
+  );
 `);
+
+// Migration: add email column to users if missing
+{
+  const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "email")) {
+    db.exec("ALTER TABLE users ADD COLUMN email TEXT");
+  }
+}
 
 // Migration: drop old sync_status table
 {
@@ -76,6 +106,12 @@ db.exec(`
     db.exec("DROP TABLE sync_status");
   }
 }
+
+// On startup: reset any stuck syncing jobs (killed by restart)
+db.exec(`
+  UPDATE sync_jobs SET status = 'failed', error_message = 'Interrupted by server restart',
+    completed_at = datetime('now') WHERE status IN ('syncing_artists', 'syncing_gigs')
+`);
 
 // Migration: add lat/lng columns if missing
 const columns = db.prepare("PRAGMA table_info(gigs)").all() as Array<{ name: string }>;
@@ -90,14 +126,20 @@ if (!hasLatitude) {
 
 // --- Users ---
 
-export function upsertUser(userId: string, displayName: string, refreshToken: string): void {
+export function upsertUser(userId: string, displayName: string, refreshToken: string, email?: string): void {
   db.prepare(
-    `INSERT INTO users (user_id, display_name, refresh_token, created_at)
-     VALUES (?, ?, ?, ?)
+    `INSERT INTO users (user_id, display_name, email, refresh_token, created_at)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        display_name = excluded.display_name,
+       email = COALESCE(excluded.email, users.email),
        refresh_token = excluded.refresh_token`
-  ).run(userId, displayName, refreshToken, new Date().toISOString());
+  ).run(userId, displayName, email || null, refreshToken, new Date().toISOString());
+}
+
+export function getUserEmail(userId: string): string | null {
+  const row = db.prepare("SELECT email FROM users WHERE user_id = ?").get(userId) as { email: string | null } | undefined;
+  return row?.email || null;
 }
 
 export function getUserRefreshToken(userId: string): string | null {
@@ -339,4 +381,126 @@ export function getCachedGigs(artistIds: string[], locationFilter?: LocationFilt
     });
   }
   return Array.from(map.values());
+}
+
+// --- Notification rules ---
+
+export interface NotificationRule {
+  id: number;
+  label: string;
+  latitude: number;
+  longitude: number;
+  locationName: string;
+  radiusKm: number;
+  dateFrom: string | null;
+  dateTo: string | null;
+  createdAt: string;
+  lastSentAt: string | null;
+  lastGigCount: number | null;
+}
+
+export function getNotificationRules(userId: string): NotificationRule[] {
+  const rows = db.prepare(
+    `SELECT nr.id, nr.label, nr.latitude, nr.longitude, nr.location_name, nr.radius_km,
+            nr.date_from, nr.date_to, nr.created_at,
+            nl.sent_at AS last_sent_at, nl.gig_count AS last_gig_count
+     FROM notification_rules nr
+     LEFT JOIN notification_log nl ON nl.id = (
+       SELECT id FROM notification_log WHERE rule_id = nr.id ORDER BY sent_at DESC LIMIT 1
+     )
+     WHERE nr.user_id = ?
+     ORDER BY nr.created_at DESC`
+  ).all(userId) as Array<{
+    id: number; label: string; latitude: number; longitude: number;
+    location_name: string; radius_km: number; date_from: string | null;
+    date_to: string | null; created_at: string;
+    last_sent_at: string | null; last_gig_count: number | null;
+  }>;
+
+  return rows.map((r) => ({
+    id: r.id, label: r.label,
+    latitude: r.latitude, longitude: r.longitude,
+    locationName: r.location_name, radiusKm: r.radius_km,
+    dateFrom: r.date_from, dateTo: r.date_to,
+    createdAt: r.created_at,
+    lastSentAt: r.last_sent_at, lastGigCount: r.last_gig_count,
+  }));
+}
+
+export function createNotificationRule(userId: string, rule: {
+  label: string; latitude: number; longitude: number; locationName: string;
+  radiusKm: number; dateFrom?: string; dateTo?: string;
+}): number {
+  const result = db.prepare(
+    `INSERT INTO notification_rules (user_id, label, latitude, longitude, location_name, radius_km, date_from, date_to, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(userId, rule.label, rule.latitude, rule.longitude, rule.locationName,
+    rule.radiusKm, rule.dateFrom || null, rule.dateTo || null, new Date().toISOString());
+  return result.lastInsertRowid as number;
+}
+
+export function deleteNotificationRule(userId: string, ruleId: number): boolean {
+  const result = db.prepare(
+    "DELETE FROM notification_rules WHERE id = ? AND user_id = ?"
+  ).run(ruleId, userId);
+  return result.changes > 0;
+}
+
+export function addNotificationLog(ruleId: number, gigCount: number): void {
+  db.prepare(
+    "INSERT INTO notification_log (rule_id, sent_at, gig_count, status) VALUES (?, ?, ?, 'sent')"
+  ).run(ruleId, new Date().toISOString(), gigCount);
+}
+
+/**
+ * Get all gig songkick_urls for a user's liked artists.
+ * Used to snapshot before sync and detect new gigs.
+ */
+export function getGigUrlsForUser(userId: string): Set<string> {
+  const artistRows = db.prepare(
+    "SELECT spotify_artist_id FROM liked_artists WHERE user_id = ?"
+  ).all(userId) as Array<{ spotify_artist_id: string }>;
+  if (artistRows.length === 0) return new Set();
+
+  const placeholders = artistRows.map(() => "?").join(",");
+  const rows = db.prepare(
+    `SELECT songkick_url FROM gigs WHERE spotify_artist_id IN (${placeholders})`
+  ).all(...artistRows.map((r) => r.spotify_artist_id)) as Array<{ songkick_url: string }>;
+  return new Set(rows.map((r) => r.songkick_url));
+}
+
+/**
+ * Get all rules for all users (for post-sync notification evaluation).
+ */
+export function getAllNotificationRules(): Array<{ userId: string; rules: NotificationRule[] }> {
+  const userIds = db.prepare(
+    "SELECT DISTINCT user_id FROM notification_rules"
+  ).all() as Array<{ user_id: string }>;
+
+  return userIds.map((u) => ({
+    userId: u.user_id,
+    rules: getNotificationRules(u.user_id),
+  }));
+}
+
+/**
+ * Given a set of gig URLs, get full gig details with artist names.
+ */
+export function getGigsByUrls(urls: string[]): Array<Gig & { artistName: string }> {
+  if (urls.length === 0) return [];
+  const placeholders = urls.map(() => "?").join(",");
+  const rows = db.prepare(
+    `SELECT g.venue, g.location, g.date, g.songkick_url, g.latitude, g.longitude, ag.artist_name
+     FROM gigs g JOIN artist_gigs ag ON ag.spotify_artist_id = g.spotify_artist_id
+     WHERE g.songkick_url IN (${placeholders})
+     ORDER BY g.date`
+  ).all(...urls) as Array<{
+    venue: string; location: string; date: string; songkick_url: string;
+    latitude: number | null; longitude: number | null; artist_name: string;
+  }>;
+  return rows.map((r) => ({
+    venue: r.venue, location: r.location, date: r.date,
+    songkickUrl: r.songkick_url, latitude: r.latitude, longitude: r.longitude,
+    artistName: r.artist_name,
+  }));
 }

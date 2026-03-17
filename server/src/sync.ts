@@ -6,8 +6,9 @@ import {
   getUserRefreshToken, updateUserRefreshToken,
   upsertLikedArtists, getCachedLikedArtists,
   getStaleArtistIds, upsertArtistGigs,
-  updateSyncJob,
+  updateSyncJob, getGigUrlsForUser,
 } from "./db.js";
+import { evaluateNotifications } from "./notifications.js";
 
 const activeSyncs = new Set<string>();
 
@@ -44,6 +45,9 @@ export async function runSync(userId: string): Promise<void> {
       artistsTotal: artists.length,
       artistsSynced: artists.length,
     });
+
+    // Snapshot gig URLs before scraping to detect new ones
+    const gigUrlsBefore = getGigUrlsForUser(userId);
 
     // Phase 2: Scrape stale gigs
     const allArtistIds = artists.map((a) => a.id);
@@ -88,6 +92,14 @@ export async function runSync(userId: string): Promise<void> {
       completedAt: new Date().toISOString(),
     });
     console.log(`[sync] ${userId}: completed`);
+
+    // Evaluate notifications for new gigs
+    const gigUrlsAfter = getGigUrlsForUser(userId);
+    const newGigUrls = [...gigUrlsAfter].filter((url) => !gigUrlsBefore.has(url));
+    if (newGigUrls.length > 0) {
+      console.log(`[sync] ${userId}: ${newGigUrls.length} new gigs found, evaluating notifications`);
+      await evaluateNotifications(userId, newGigUrls);
+    }
   } catch (err) {
     const msg = (err as Error).message;
     console.error(`[sync] ${userId}: failed:`, msg);

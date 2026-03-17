@@ -4,6 +4,7 @@ import { useSyncContext } from "../contexts/SyncContext";
 const tabs = [
   { to: "/artists", label: "Artists" },
   { to: "/gigs", label: "Gigs" },
+  { to: "/notifications", label: "Notifications" },
 ];
 
 function SyncIndicator() {

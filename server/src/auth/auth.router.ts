@@ -41,7 +41,7 @@ authRouter.get("/callback", async (req, res) => {
     req.session.displayName = profile.display_name || profile.id;
     delete req.session.oauthState;
 
-    upsertUser(profile.id, profile.display_name || profile.id, tokens.refreshToken);
+    upsertUser(profile.id, profile.display_name || profile.id, tokens.refreshToken, profile.email);
 
     res.redirect(`${config.clientOrigin}/artists`);
   } catch (err) {
