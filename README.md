@@ -173,4 +173,4 @@ git push deploy main
 
 ## TODO
 
-- ?
+- How does syncing work with multi-user? I think it should work by chaining syncs across users in series to avoid overwhelming songkik api? i.e. user0 start -> user0 finish -> user1 start -> user1 finish -> ... -> userN start -> userN finish. Question: are syncing statuses per user? Think that's needed to enable this.

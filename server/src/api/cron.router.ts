@@ -13,9 +13,14 @@ cronRouter.post("/cron/sync", async (req, res) => {
   }
 
   const userIds = getAllUserIds();
-  for (const userId of userIds) {
-    runSync(userId);
-  }
+
+  // Chain syncs in series to avoid overwhelming Songkick
+  (async () => {
+    for (const userId of userIds) {
+      await runSync(userId);
+    }
+    console.log(`[cron] Finished syncing ${userIds.length} users`);
+  })();
 
   res.json({ ok: true, usersQueued: userIds.length });
 });
