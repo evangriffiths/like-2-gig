@@ -71,14 +71,14 @@ function LocationSearch({
   initialRadius?: number;
 }) {
   const [query, setQuery] = useState(initialQuery || "");
-  const [radius, setRadius] = useState(initialRadius || 50);
+  const [radius, setRadius] = useState(initialRadius || 25);
   const [suggestions, setSuggestions] = useState<GeoResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(initialQuery || null);
   const selectedRef = useRef<GeoResult | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const skipFetchRef = useRef(false);
+  const skipFetchRef = useRef(!!initialQuery);
 
   // Debounced geocode for autocomplete
   useEffect(() => {
@@ -86,6 +86,9 @@ function LocationSearch({
       skipFetchRef.current = false;
       return;
     }
+
+    // Don't fetch if a location is already selected
+    if (displayName) return;
 
     if (query.trim().length < 2) {
       setSuggestions([]);
@@ -192,11 +195,6 @@ function LocationSearch({
           </button>
         )}
       </div>
-      {displayName && isFiltered && (
-        <p className="text-sm text-gray-400">
-          Showing gigs within {radius} km of {displayName}
-        </p>
-      )}
     </div>
   );
 }
@@ -249,7 +247,6 @@ function filterGigsByDate(gigs: Gig[], dateFrom: string, dateTo: string): Gig[] 
 }
 
 export function GigsPage() {
-  const { artistGigs, notFoundArtists, loading, error, searchByLocation, clearLocation, location } = useGigs();
   const [searchParams] = useSearchParams();
 
   // Read URL params for initial state
@@ -260,21 +257,14 @@ export function GigsPage() {
   const urlDateTo = searchParams.get("dateTo");
   const urlLocation = searchParams.get("location");
 
+  const initialLocation = urlLat && urlLng
+    ? { lat: Number(urlLat), lng: Number(urlLng), radius: Number(urlRadius) || 25 }
+    : null;
+
+  const { artistGigs, notFoundArtists, loading, error, searchByLocation, clearLocation, location } = useGigs(initialLocation);
+
   const [dateFrom, setDateFrom] = useState(urlDateFrom || new Date().toISOString().split("T")[0]);
   const [dateTo, setDateTo] = useState(urlDateTo || "");
-  const [initializedFromUrl, setInitializedFromUrl] = useState(false);
-
-  // Apply URL location params on mount
-  useEffect(() => {
-    if (!initializedFromUrl && urlLat && urlLng) {
-      searchByLocation({
-        lat: Number(urlLat),
-        lng: Number(urlLng),
-        radius: Number(urlRadius) || 50,
-      });
-      setInitializedFromUrl(true);
-    }
-  }, [urlLat, urlLng, urlRadius, searchByLocation, initializedFromUrl]);
 
   const isLocationFiltered = location !== null;
   const hasDateFilter = dateFrom !== "" || dateTo !== "";

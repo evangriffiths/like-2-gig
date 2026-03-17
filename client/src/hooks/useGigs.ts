@@ -9,13 +9,13 @@ export interface LocationSearch {
   radius: number;
 }
 
-export function useGigs() {
+export function useGigs(initialLocation?: LocationSearch | null) {
   const navigate = useNavigate();
   const [artistGigs, setArtistGigs] = useState<ArtistGigs[]>([]);
   const [notFoundArtists, setNotFoundArtists] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [location, setLocation] = useState<LocationSearch | null>(null);
+  const [location, setLocation] = useState<LocationSearch | null>(initialLocation ?? null);
   const { syncJob } = useSyncContext();
 
   const fetchGigs = useCallback(

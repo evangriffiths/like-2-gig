@@ -95,8 +95,8 @@ function AddNotificationForm({
   const [suggestions, setSuggestions] = useState<GeoResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selected, setSelected] = useState<GeoResult | null>(null);
-  const [radius, setRadius] = useState(50);
-  const [dateFrom, setDateFrom] = useState("");
+  const [radius, setRadius] = useState(25);
+  const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().split("T")[0]);
   const [dateTo, setDateTo] = useState("");
   const [label, setLabel] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -218,7 +218,7 @@ function AddNotificationForm({
 
       <div className="flex gap-3">
         <div>
-          <label className="mb-1 block text-xs text-gray-500">From date (optional)</label>
+          <label className="mb-1 block text-xs text-gray-500">From date</label>
           <input
             type="date"
             value={dateFrom}
