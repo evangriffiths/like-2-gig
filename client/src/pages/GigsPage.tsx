@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useGigs } from "../hooks/useGigs";
 import { Spinner } from "../components/Spinner";
 import type { ArtistGigs, Gig } from "../types";
@@ -60,13 +61,17 @@ function LocationSearch({
   onSearch,
   onClear,
   isFiltered,
+  initialQuery,
+  initialRadius,
 }: {
   onSearch: (lat: number, lng: number, radius: number, displayName: string) => void;
   onClear: () => void;
   isFiltered: boolean;
+  initialQuery?: string;
+  initialRadius?: number;
 }) {
-  const [query, setQuery] = useState("");
-  const [radius, setRadius] = useState(50);
+  const [query, setQuery] = useState(initialQuery || "");
+  const [radius, setRadius] = useState(initialRadius || 50);
   const [suggestions, setSuggestions] = useState<GeoResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -245,8 +250,31 @@ function filterGigsByDate(gigs: Gig[], dateFrom: string, dateTo: string): Gig[] 
 
 export function GigsPage() {
   const { artistGigs, notFoundArtists, loading, error, searchByLocation, clearLocation, location } = useGigs();
-  const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().split("T")[0]);
-  const [dateTo, setDateTo] = useState("");
+  const [searchParams] = useSearchParams();
+
+  // Read URL params for initial state
+  const urlLat = searchParams.get("lat");
+  const urlLng = searchParams.get("lng");
+  const urlRadius = searchParams.get("radius");
+  const urlDateFrom = searchParams.get("dateFrom");
+  const urlDateTo = searchParams.get("dateTo");
+  const urlLocation = searchParams.get("location");
+
+  const [dateFrom, setDateFrom] = useState(urlDateFrom || new Date().toISOString().split("T")[0]);
+  const [dateTo, setDateTo] = useState(urlDateTo || "");
+  const [initializedFromUrl, setInitializedFromUrl] = useState(false);
+
+  // Apply URL location params on mount
+  useEffect(() => {
+    if (!initializedFromUrl && urlLat && urlLng) {
+      searchByLocation({
+        lat: Number(urlLat),
+        lng: Number(urlLng),
+        radius: Number(urlRadius) || 50,
+      });
+      setInitializedFromUrl(true);
+    }
+  }, [urlLat, urlLng, urlRadius, searchByLocation, initializedFromUrl]);
 
   const isLocationFiltered = location !== null;
   const hasDateFilter = dateFrom !== "" || dateTo !== "";
@@ -280,6 +308,8 @@ export function GigsPage() {
           onSearch={(lat, lng, radius) => searchByLocation({ lat, lng, radius })}
           onClear={clearLocation}
           isFiltered={isLocationFiltered}
+          initialQuery={urlLocation || undefined}
+          initialRadius={urlRadius ? Number(urlRadius) : undefined}
         />
 
         <DateRangeFilter

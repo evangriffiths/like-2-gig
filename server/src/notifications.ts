@@ -60,7 +60,7 @@ export async function evaluateNotifications(
 
     if (matching.length === 0) continue;
 
-    const sent = await sendNotificationEmail(email, rule.label, matching);
+    const sent = await sendNotificationEmail(email, rule, matching);
     if (sent) {
       addNotificationLog(rule.id, matching.length);
     }

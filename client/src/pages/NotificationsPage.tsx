@@ -1,7 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Spinner } from "../components/Spinner";
 import type { NotificationRule } from "../types";
+
+function gigsLinkForRule(rule: NotificationRule): string {
+  const params = new URLSearchParams({
+    lat: String(rule.latitude),
+    lng: String(rule.longitude),
+    radius: String(rule.radiusKm),
+    location: rule.locationName,
+  });
+  if (rule.dateFrom) params.set("dateFrom", rule.dateFrom);
+  if (rule.dateTo) params.set("dateTo", rule.dateTo);
+  return `/gigs?${params}`;
+}
 
 const RADIUS_OPTIONS = [25, 50, 100, 200];
 
@@ -42,15 +54,23 @@ function NotificationCard({
           x
         </button>
       </div>
-      <div className="mt-3 border-t border-gray-800 pt-2">
-        {rule.lastSentAt ? (
-          <p className="text-xs text-gray-500">
-            Last notified: {new Date(rule.lastSentAt).toLocaleString()} — {rule.lastGigCount} gig
-            {rule.lastGigCount !== 1 && "s"}
-          </p>
-        ) : (
-          <p className="text-xs text-gray-600">No notifications sent yet</p>
-        )}
+      <div className="mt-3 flex items-center justify-between border-t border-gray-800 pt-2">
+        <div>
+          {rule.lastSentAt ? (
+            <p className="text-xs text-gray-500">
+              Last notified: {new Date(rule.lastSentAt).toLocaleString()} — {rule.lastGigCount} gig
+              {rule.lastGigCount !== 1 && "s"}
+            </p>
+          ) : (
+            <p className="text-xs text-gray-600">No notifications sent yet</p>
+          )}
+        </div>
+        <Link
+          to={gigsLinkForRule(rule)}
+          className="text-xs text-green-500 hover:text-green-400"
+        >
+          View gigs
+        </Link>
       </div>
     </div>
   );
