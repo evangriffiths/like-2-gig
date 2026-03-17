@@ -16,10 +16,10 @@ function SyncIndicator() {
     statusText = "Never synced";
     dotColor = "bg-gray-500";
   } else if (syncJob.status === "syncing_artists") {
-    statusText = "Syncing artists...";
+    statusText = "Syncing artists";
     dotColor = "bg-blue-500 animate-pulse";
   } else if (syncJob.status === "syncing_gigs") {
-    statusText = `Syncing gigs (${syncJob.gigsSynced}/${syncJob.gigsTotal})...`;
+    statusText = `Syncing gigs (${syncJob.gigsSynced}/${syncJob.gigsTotal})`;
     dotColor = "bg-blue-500 animate-pulse";
   } else if (syncJob.status === "completed") {
     const date = syncJob.completedAt ? new Date(syncJob.completedAt).toLocaleString() : "";
@@ -39,7 +39,7 @@ function SyncIndicator() {
         disabled={isActive}
         className="rounded bg-gray-800 px-2.5 py-1 text-xs font-medium text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50"
       >
-        {isActive ? "Syncing..." : "Sync"}
+        {isActive ? "Syncing" : "Sync"}
       </button>
     </div>
   );

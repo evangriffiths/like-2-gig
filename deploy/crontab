@@ -1,0 +1,3 @@
+# Like2Gig scheduled tasks
+# Sync all users' artists + gigs daily at 4am UTC
+0 4 * * * curl -sf -X POST -H "Authorization: Bearer CRON_SECRET_PLACEHOLDER" https://like2gig.evangriffiths.org/api/cron/sync >> /var/log/like2gig-cron.log 2>&1

@@ -1,0 +1,21 @@
+like2gig.evangriffiths.org {
+    basicauth {
+        # Password hash generated with: caddy hash-password --plaintext <password>
+        admin {$SITE_PASSWORD_HASH}
+    }
+
+    root * /opt/like2gig/client/dist
+    file_server
+
+    handle /auth/* {
+        reverse_proxy localhost:3001
+    }
+
+    handle /api/* {
+        reverse_proxy localhost:3001
+    }
+
+    handle {
+        try_files {path} /index.html
+    }
+}

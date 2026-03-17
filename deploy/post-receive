@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e
+
+APP_DIR=/opt/like2gig
+GIT_DIR=/opt/like2gig.git
+
+echo "==> Deploying like2gig..."
+
+git --work-tree=$APP_DIR --git-dir=$GIT_DIR checkout -f main
+
+cd $APP_DIR
+pnpm install
+cd client && pnpm run build && cd ..
+cd server && pnpm run build && cd ..
+
+# Sync server config from repo
+cp deploy/like2gig.service /etc/systemd/system/like2gig.service
+systemctl daemon-reload
+
+systemctl restart like2gig
+echo "==> Deploy complete!"

@@ -1,0 +1,15 @@
+[Unit]
+Description=Like2Gig
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/like2gig/server
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/opt/like2gig/.env
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
