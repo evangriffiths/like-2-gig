@@ -173,4 +173,4 @@ git push deploy main
 
 ## TODO
 
-- Notifications feature: click on the notification, and it navigates to the gig page, with the search results for that filter. Also add a 'see all upcoming gigs' to the email notification that does the same.
+- ?
