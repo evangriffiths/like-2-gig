@@ -68,12 +68,15 @@ export async function fetchArtistGigs(
         if (event["@type"] !== "MusicEvent") continue;
 
         const url: string = event.url || "";
-        // Strip UTM params for dedup key
-        const dedupKey = url.split("?")[0];
+        const location = event.location;
+
+        // Dedup by venue + date (covers concert vs festival listings for same event)
+        const venueName = location?.name || "";
+        const startDate = event.startDate || "";
+        const dedupKey = `${venueName}|${startDate}`;
         if (seen.has(dedupKey)) continue;
         seen.add(dedupKey);
 
-        const location = event.location;
         const address = location?.address;
 
         const locationParts = [
