@@ -16,6 +16,7 @@ db.exec(`
     display_name TEXT,
     email TEXT,
     refresh_token TEXT NOT NULL,
+    site_authorized INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
 
@@ -91,6 +92,16 @@ db.exec(`
   );
 `);
 
+// Migration: add site_authorized column to users if missing
+{
+  const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "site_authorized")) {
+    db.exec("ALTER TABLE users ADD COLUMN site_authorized INTEGER NOT NULL DEFAULT 0");
+    // Authorize existing users (they got in before this feature existed)
+    db.exec("UPDATE users SET site_authorized = 1");
+  }
+}
+
 // Migration: add email column to users if missing
 {
   const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
@@ -135,6 +146,15 @@ export function upsertUser(userId: string, displayName: string, refreshToken: st
        email = COALESCE(excluded.email, users.email),
        refresh_token = excluded.refresh_token`
   ).run(userId, displayName, email || null, refreshToken, new Date().toISOString());
+}
+
+export function isUserAuthorized(userId: string): boolean {
+  const row = db.prepare("SELECT site_authorized FROM users WHERE user_id = ?").get(userId) as { site_authorized: number } | undefined;
+  return row?.site_authorized === 1;
+}
+
+export function setUserAuthorized(userId: string): void {
+  db.prepare("UPDATE users SET site_authorized = 1 WHERE user_id = ?").run(userId);
 }
 
 export function getUserEmail(userId: string): string | null {

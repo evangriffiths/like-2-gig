@@ -2,13 +2,9 @@ import { Router } from "express";
 import crypto from "crypto";
 import { config } from "../config.js";
 import { getAuthorizeUrl, exchangeCodeForTokens } from "./spotify-auth.js";
-import { upsertUser } from "../db.js";
+import { upsertUser, isUserAuthorized, setUserAuthorized } from "../db.js";
 
 export const authRouter = Router();
-
-function isAllowedUser(userId: string): boolean {
-  return config.allowedUsers.length === 0 || config.allowedUsers.includes(userId);
-}
 
 authRouter.get("/login", (req, res) => {
   const state = crypto.randomUUID();
@@ -33,7 +29,6 @@ authRouter.get("/callback", async (req, res) => {
   try {
     const tokens = await exchangeCodeForTokens(code as string);
 
-    // Fetch Spotify user profile
     const profileRes = await fetch("https://api.spotify.com/v1/me", {
       headers: { Authorization: `Bearer ${tokens.accessToken}` },
     });
@@ -43,10 +38,11 @@ authRouter.get("/callback", async (req, res) => {
     req.session.tokens = tokens;
     req.session.userId = profile.id;
     req.session.displayName = profile.display_name || profile.id;
-    req.session.siteAuthorized = isAllowedUser(profile.id);
     delete req.session.oauthState;
 
     upsertUser(profile.id, profile.display_name || profile.id, tokens.refreshToken, profile.email);
+
+    req.session.siteAuthorized = isUserAuthorized(profile.id);
 
     if (req.session.siteAuthorized) {
       res.redirect(`${config.clientOrigin}/artists`);
@@ -82,6 +78,7 @@ authRouter.post("/site-password", (req, res) => {
   }
 
   req.session.siteAuthorized = true;
+  setUserAuthorized(req.session.userId);
   res.json({ ok: true });
 });
 
