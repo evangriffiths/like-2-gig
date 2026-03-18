@@ -16,6 +16,8 @@ const baseUrl = process.env.BASE_URL || "http://127.0.0.1:5173";
 export const config = {
   cronSecret: process.env.CRON_SECRET || "",
   resendApiKey: process.env.RESEND_API_KEY || "",
+  allowedUsers: (process.env.ALLOWED_USERS || "").split(",").filter(Boolean),
+  sitePassword: process.env.SITE_PASSWORD || "",
   clientId: requireEnv("CLIENT_ID"),
   clientSecret: requireEnv("CLIENT_SECRET"),
   redirectUri: `${baseUrl}/auth/callback`,

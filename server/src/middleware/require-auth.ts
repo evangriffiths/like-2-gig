@@ -9,7 +9,7 @@ export async function requireAuth(
 ) {
   const tokens = req.session.tokens;
 
-  if (!tokens || !req.session.userId) {
+  if (!tokens || !req.session.userId || !req.session.siteAuthorized) {
     return res.status(401).json({ error: "Not authenticated" });
   }
 

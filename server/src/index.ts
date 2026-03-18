@@ -39,9 +39,9 @@ app.use(
   })
 );
 
+app.use(express.json());
 app.use("/auth", authRouter);
 app.use("/api", cronRouter); // cron has its own auth
-app.use(express.json());
 app.use("/api", requireAuth, artistsRouter, gigsRouter, notificationsRouter);
 
 app.listen(config.port, () => {

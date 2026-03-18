@@ -62,5 +62,6 @@ declare module "express-session" {
     oauthState?: string;
     userId?: string;
     displayName?: string;
+    siteAuthorized?: boolean;
   }
 }

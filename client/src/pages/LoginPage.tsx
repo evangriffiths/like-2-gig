@@ -10,6 +10,7 @@ export function LoginPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.authenticated) navigate("/artists", { replace: true });
+        else if (data.needsPassword) navigate("/password", { replace: true });
         else setChecking(false);
       })
       .catch(() => setChecking(false));

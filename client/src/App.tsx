@@ -3,6 +3,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ArtistsPage } from "./pages/ArtistsPage";
 import { GigsPage } from "./pages/GigsPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import { PasswordPage } from "./pages/PasswordPage";
 import { Header } from "./components/Header";
 import { SyncProvider } from "./contexts/SyncContext";
 
@@ -19,6 +20,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<LoginPage />} />
+      <Route path="/password" element={<PasswordPage />} />
       <Route path="/artists" element={<AuthedLayout><ArtistsPage /></AuthedLayout>} />
       <Route path="/gigs" element={<AuthedLayout><GigsPage /></AuthedLayout>} />
       <Route path="/notifications" element={<AuthedLayout><NotificationsPage /></AuthedLayout>} />
