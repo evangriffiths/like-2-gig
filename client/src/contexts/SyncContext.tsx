@@ -17,7 +17,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [syncJob, setSyncJob] = useState<SyncJob | null>(null);
   const [polling, setPolling] = useState(false);
 
-  // Fetch initial sync status
+  // Fetch initial sync status, auto-sync if never synced
   useEffect(() => {
     fetch("/api/sync-status")
       .then((res) => res.json())
@@ -25,6 +25,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         setSyncJob(data.syncJob);
         if (data.syncJob?.status === "syncing_artists" || data.syncJob?.status === "syncing_gigs") {
           setPolling(true);
+        } else if (!data.syncJob) {
+          // Never synced — trigger automatically
+          fetch("/api/sync", { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => { setSyncJob(d.syncJob); setPolling(true); })
+            .catch(() => {});
         }
       })
       .catch(() => {});

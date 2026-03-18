@@ -27,12 +27,12 @@ export function useArtists() {
   // Initial fetch
   useEffect(() => { fetchArtists(); }, [fetchArtists]);
 
-  // Re-fetch when sync completes
+  // Re-fetch when artists are done syncing (or full sync completes)
   useEffect(() => {
-    if (syncJob?.status === "completed") {
+    if (syncJob?.status === "syncing_gigs" || syncJob?.status === "completed") {
       fetchArtists();
     }
-  }, [syncJob?.completedAt, fetchArtists]);
+  }, [syncJob?.status, syncJob?.completedAt, fetchArtists]);
 
   return { artists, loading, error };
 }
