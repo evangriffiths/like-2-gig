@@ -31,10 +31,18 @@ function SyncIndicator() {
     dotColor = "bg-amber-500";
   }
 
+  const needsApproval = syncJob?.status === "failed" &&
+    syncJob.errorMessage?.includes("not registered for this application");
+
   return (
     <div className="flex items-center gap-2">
       <span className={`inline-block h-2 w-2 rounded-full ${dotColor}`} />
       <span className="text-xs text-gray-400">{statusText}</span>
+      {needsApproval && (
+        <span className="text-xs text-amber-400">
+          Ask the site owner to add your Spotify account
+        </span>
+      )}
       <button
         onClick={startSync}
         disabled={isActive}
