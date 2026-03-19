@@ -12,10 +12,10 @@ function Arrow({ dir }: { dir: SortDir }) {
 
 export function SortToggle({ sortField, sortDir, onChange }: SortToggleProps) {
   return (
-    <div className="flex overflow-hidden rounded-lg border border-gray-700">
+    <div className="flex shrink-0 overflow-hidden rounded-lg border border-gray-700">
       <button
         onClick={() => onChange("alpha")}
-        className={`px-4 py-2 text-sm font-medium transition ${
+        className={`px-3 py-2 text-xs font-medium transition sm:text-sm ${
           sortField === "alpha"
             ? "bg-green-500 text-black"
             : "bg-gray-900 text-gray-400 hover:text-white"
@@ -25,17 +25,17 @@ export function SortToggle({ sortField, sortDir, onChange }: SortToggleProps) {
       </button>
       <button
         onClick={() => onChange("firstLiked")}
-        className={`px-4 py-2 text-sm font-medium transition ${
+        className={`px-3 py-2 text-xs font-medium transition sm:text-sm ${
           sortField === "firstLiked"
             ? "bg-green-500 text-black"
             : "bg-gray-900 text-gray-400 hover:text-white"
         }`}
       >
-        First Liked{sortField === "firstLiked" && <Arrow dir={sortDir} />}
+        Liked{sortField === "firstLiked" && <Arrow dir={sortDir} />}
       </button>
       <button
         onClick={() => onChange("likes")}
-        className={`px-4 py-2 text-sm font-medium transition ${
+        className={`px-3 py-2 text-xs font-medium transition sm:text-sm ${
           sortField === "likes"
             ? "bg-green-500 text-black"
             : "bg-gray-900 text-gray-400 hover:text-white"
