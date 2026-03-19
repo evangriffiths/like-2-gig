@@ -54,7 +54,7 @@ export function ArtistsPage() {
       <div className="mx-auto max-w-2xl">
         <h1 className="mb-6 text-3xl font-bold text-white">Your Artists</h1>
 
-        <div className="mb-4 flex gap-3">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
           <SearchBar value={search} onChange={setSearch} />
           <SortToggle sortField={sortField} sortDir={sortDir} onChange={handleSortChange} />
         </div>
