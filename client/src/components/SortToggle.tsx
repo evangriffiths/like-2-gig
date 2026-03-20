@@ -12,7 +12,7 @@ function Arrow({ dir }: { dir: SortDir }) {
 
 export function SortToggle({ sortField, sortDir, onChange }: SortToggleProps) {
   return (
-    <div className="flex shrink-0 overflow-hidden rounded-lg border border-gray-700">
+    <div className="flex w-fit shrink-0 overflow-hidden rounded-lg border border-gray-700">
       <button
         onClick={() => onChange("alpha")}
         className={`px-3 py-2 text-xs font-medium transition sm:text-sm ${
