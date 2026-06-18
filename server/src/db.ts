@@ -171,6 +171,16 @@ export function updateUserRefreshToken(userId: string, refreshToken: string): vo
   db.prepare("UPDATE users SET refresh_token = ? WHERE user_id = ?").run(refreshToken, userId);
 }
 
+/**
+ * Discard a user's stored refresh token after Spotify rejected it with
+ * invalid_grant. The user row (email, site authorization) is kept so re-auth
+ * is seamless. Stored as "" rather than NULL because the column is NOT NULL;
+ * getUserRefreshToken() already maps the empty string to null.
+ */
+export function clearUserRefreshToken(userId: string): void {
+  db.prepare("UPDATE users SET refresh_token = '' WHERE user_id = ?").run(userId);
+}
+
 export function getAllUserIds(): string[] {
   const rows = db.prepare("SELECT user_id FROM users").all() as Array<{ user_id: string }>;
   return rows.map((r) => r.user_id);
