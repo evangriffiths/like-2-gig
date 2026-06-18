@@ -1,6 +1,19 @@
 import { config } from "../config.js";
 import type { TokenSet } from "../types.js";
 
+/**
+ * Thrown when Spotify rejects a refresh token with `invalid_grant` — i.e. the
+ * token has expired (6-month limit as of 2026-07-20) or been revoked. Callers
+ * must discard the stored token and send the user back through sign-in. Do not
+ * retry.
+ */
+export class RefreshTokenExpiredError extends Error {
+  constructor(message = "Refresh token is invalid or expired") {
+    super(message);
+    this.name = "RefreshTokenExpiredError";
+  }
+}
+
 export function getAuthorizeUrl(state: string): string {
   const params = new URLSearchParams({
     response_type: "code",
@@ -64,6 +77,18 @@ export async function refreshAccessToken(
 
   if (!res.ok) {
     const text = await res.text();
+    // Spotify returns 400 with body {"error":"invalid_grant", ...} when the
+    // refresh token is expired or revoked. Surface this distinctly so callers
+    // can discard the token and re-auth rather than treating it as transient.
+    let errorCode: string | undefined;
+    try {
+      errorCode = JSON.parse(text).error;
+    } catch {
+      // non-JSON body; fall through to generic error
+    }
+    if (errorCode === "invalid_grant") {
+      throw new RefreshTokenExpiredError(`Token refresh rejected: ${text}`);
+    }
     throw new Error(`Token refresh failed (${res.status}): ${text}`);
   }
 

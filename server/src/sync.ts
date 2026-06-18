@@ -1,9 +1,9 @@
-import { refreshAccessToken } from "./auth/spotify-auth.js";
+import { refreshAccessToken, RefreshTokenExpiredError } from "./auth/spotify-auth.js";
 import { fetchAllSavedTracks } from "./api/spotify-client.js";
 import { extractArtists } from "./api/transform.js";
 import { searchArtist, fetchArtistGigs } from "./api/songkick.js";
 import {
-  getUserRefreshToken, updateUserRefreshToken,
+  getUserRefreshToken, updateUserRefreshToken, clearUserRefreshToken,
   upsertLikedArtists, getCachedLikedArtists,
   getStaleArtistIds, upsertArtistGigs,
   updateSyncJob, getGigUrlsForUser,
@@ -101,6 +101,18 @@ export async function runSync(userId: string): Promise<void> {
       await evaluateNotifications(userId, newGigUrls);
     }
   } catch (err) {
+    if (err instanceof RefreshTokenExpiredError) {
+      // Token is permanently dead — discard it so the user is forced to
+      // reconnect Spotify on their next visit. Do not retry.
+      clearUserRefreshToken(userId);
+      console.error(`[sync] ${userId}: refresh token expired, reauthorization required`);
+      updateSyncJob(userId, {
+        status: "failed",
+        completedAt: new Date().toISOString(),
+        errorMessage: "Spotify session expired — please reconnect your account",
+      });
+      return;
+    }
     const msg = (err as Error).message;
     console.error(`[sync] ${userId}: failed:`, msg);
     updateSyncJob(userId, {
