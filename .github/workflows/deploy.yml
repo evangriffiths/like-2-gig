@@ -27,7 +27,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H evan-vps >> ~/.ssh/known_hosts
+          # Resolve the VPS via Tailscale rather than relying on MagicDNS
+          # search domains, which the runner's resolver doesn't always pick up.
+          VPS_IP=$(tailscale ip -4 evan-vps)
+          echo "Deploying to evan-vps ($VPS_IP)"
+          ssh-keyscan -H "$VPS_IP" >> ~/.ssh/known_hosts
 
-          git remote add deploy root@evan-vps:/opt/like2gig.git
+          git remote add deploy "root@$VPS_IP:/opt/like2gig.git"
           git push deploy main --force
