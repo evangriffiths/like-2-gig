@@ -5,7 +5,7 @@ import { searchArtist, fetchArtistGigs } from "./api/songkick.js";
 import {
   getUserRefreshToken, updateUserRefreshToken, clearUserRefreshToken,
   upsertLikedArtists, getCachedLikedArtists,
-  getStaleArtistIds, upsertArtistGigs,
+  getStaleArtistIds, upsertArtistGigs, markArtistScrapeError,
   updateSyncJob, getGigUrlsForUser,
 } from "./db.js";
 import { evaluateNotifications } from "./notifications.js";
@@ -62,6 +62,9 @@ export async function runSync(userId: string): Promise<void> {
 
     console.log(`[sync] ${userId}: ${staleArtists.length} stale artists to scrape`);
 
+    let errorCount = 0;
+    let lastError: string | null = null;
+
     for (let i = 0; i < staleArtists.length; i++) {
       const artist = staleArtists[i];
       if (i > 0) await new Promise((r) => setTimeout(r, 1000));
@@ -76,7 +79,13 @@ export async function runSync(userId: string): Promise<void> {
         }
       } catch (err) {
         const msg = (err as Error).message;
-        upsertArtistGigs(artist.id, artist.name, null, "error", []);
+        errorCount++;
+        lastError = msg;
+        markArtistScrapeError(artist.id, artist.name);
+        // Log the first few failures in full, then summarise to avoid log spam
+        if (errorCount <= 3) {
+          console.error(`[sync] ${userId}: failed to scrape "${artist.name}": ${msg}`);
+        }
         if (msg.includes("rate limited")) {
           console.warn(`[sync] Rate limited at ${i + 1}/${staleArtists.length}, stopping early`);
           updateSyncJob(userId, { gigsSynced: i + 1 });
@@ -87,11 +96,28 @@ export async function runSync(userId: string): Promise<void> {
       updateSyncJob(userId, { gigsSynced: i + 1 });
     }
 
+    const attempted = staleArtists.length;
+    if (attempted > 0 && errorCount === attempted) {
+      // Every scrape failed: Songkick is blocking or down. Don't report success.
+      const errorMessage = `All ${attempted} artist scrapes failed (last error: ${lastError})`;
+      console.error(`[sync] ${userId}: ${errorMessage}`);
+      updateSyncJob(userId, {
+        status: "failed",
+        completedAt: new Date().toISOString(),
+        errorMessage,
+      });
+      return;
+    }
+
+    const errorMessage = errorCount > 0
+      ? `${errorCount} of ${attempted} artist scrapes failed (last error: ${lastError})`
+      : null;
     updateSyncJob(userId, {
       status: "completed",
       completedAt: new Date().toISOString(),
+      errorMessage,
     });
-    console.log(`[sync] ${userId}: completed`);
+    console.log(`[sync] ${userId}: completed${errorMessage ? ` with errors: ${errorMessage}` : ""}`);
 
     // Evaluate notifications for new gigs
     const gigUrlsAfter = getGigUrlsForUser(userId);

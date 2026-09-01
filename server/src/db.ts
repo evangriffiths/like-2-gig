@@ -302,6 +302,21 @@ export function upsertArtistGigs(
   txn();
 }
 
+/**
+ * Record a failed scrape for an artist without discarding what we already
+ * know: existing gigs and songkick_path are preserved so a transient
+ * Songkick outage doesn't wipe the gig list.
+ */
+export function markArtistScrapeError(spotifyArtistId: string, artistName: string): void {
+  db.prepare(
+    `INSERT INTO artist_gigs (spotify_artist_id, artist_name, songkick_path, status, fetched_at)
+     VALUES (?, ?, NULL, 'error', ?)
+     ON CONFLICT(spotify_artist_id) DO UPDATE SET
+       artist_name = excluded.artist_name,
+       status = 'error', fetched_at = excluded.fetched_at`
+  ).run(spotifyArtistId, artistName, new Date().toISOString());
+}
+
 export function getNotFoundArtists(artistIds: string[]): string[] {
   if (artistIds.length === 0) return [];
   const placeholders = artistIds.map(() => "?").join(",");

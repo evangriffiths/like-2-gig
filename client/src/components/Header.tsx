@@ -25,7 +25,8 @@ function SyncIndicator() {
   } else if (syncJob.status === "completed") {
     const date = syncJob.completedAt ? new Date(syncJob.completedAt).toLocaleDateString() : "";
     statusText = date;
-    dotColor = "bg-green-500";
+    // Partial failures still complete, but shouldn't look like a clean run
+    dotColor = syncJob.errorMessage ? "bg-amber-500" : "bg-green-500";
   } else {
     statusText = "Failed";
     dotColor = "bg-amber-500";
@@ -37,7 +38,7 @@ function SyncIndicator() {
   return (
     <div className="flex items-center gap-1.5">
       <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
-      <span className="text-xs text-gray-400">{statusText}</span>
+      <span className="text-xs text-gray-400" title={syncJob?.errorMessage ?? undefined}>{statusText}</span>
       {needsApproval && (
         <span className="text-xs text-amber-400">Ask owner to add you</span>
       )}

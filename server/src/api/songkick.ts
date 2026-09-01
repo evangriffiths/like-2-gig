@@ -1,8 +1,9 @@
 import type { Gig } from "../types.js";
 
 const BASE_URL = "https://www.songkick.com";
-const USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+// Songkick (via Fastly) returns 406 to requests that claim a browser UA but
+// don't otherwise look like that browser. An honest, non-browser UA passes.
+const USER_AGENT = "like2gig/1.0 (+https://like2gig.evangriffiths.org)";
 
 async function fetchPage(url: string): Promise<string> {
   const res = await fetch(url, {
